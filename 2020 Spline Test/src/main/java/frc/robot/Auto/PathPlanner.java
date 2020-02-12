@@ -84,6 +84,20 @@ public class PathPlanner {
 
 	}
 	
+	// converts feet per minute to wheel rotations per minute
+	public double[][] convertArray(double[][] array) {
+
+		double temp[][] = new double[array.length][2];
+
+		for (int i = 0; i < array.length; i++) {
+			temp[i][0] = array[i][0];
+			temp[i][1] = ((array[i][1]) * 7 * 60); // 7=number of rotations/1 foot, 60 = seconds to minutes
+		}
+
+		return temp;
+	}
+
+	// not needed?
 	public double[][] translateArray(double[][] array) {
 		double [][] temporary = new double[array.length][array[1].length];
 
@@ -500,6 +514,11 @@ public class PathPlanner {
 		smoothLeftVelocity = velocityFix(smoothLeftVelocity, origLeftVelocity, 0.0000001);
 		smoothRightVelocity = velocityFix(smoothRightVelocity, origRightVelocity, 0.0000001);
 		
+		// convert to wheel rotations
+		smoothCenterVelocity = convertArray(smoothCenterVelocity);
+		smoothLeftVelocity = convertArray(smoothLeftVelocity);
+		smoothRightVelocity = convertArray(smoothRightVelocity);
+
 	}
 
 	// main program

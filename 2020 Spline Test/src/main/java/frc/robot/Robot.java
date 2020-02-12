@@ -19,6 +19,9 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.CANEncoder;
 import com.revrobotics.CANPIDController;
 
+//import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.sensors.PigeonIMU;
+
 import frc.robot.Auto.Timer;
 import frc.robot.Auto.PathPlanner;
 
@@ -49,6 +52,8 @@ public class Robot extends TimedRobot {
 
   private CANPIDController leftPidController;
   private CANPIDController rightPidController;
+  
+  private PigeonIMU pidgey;
 
   private Timer timer = new Timer();
 
@@ -57,7 +62,7 @@ public class Robot extends TimedRobot {
 
   private boolean isAutoFinished = false; // auto flag for spline
   
-  private double totalTime = 20; //seconds
+  private double totalTime = 5; //seconds
   private double timeStep = 0.02; //period of control loop on motor controller, seconds
   private double robotTrackWidth = 2; //distance between left and right wheels, feet
 
@@ -70,19 +75,28 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
 
-    rightFront = new CANSparkMax(2, MotorType.kBrushless);
-    rightBack = new CANSparkMax(5, MotorType.kBrushless);
+    rightFront = new CANSparkMax(1, MotorType.kBrushless);
+    rightBack = new CANSparkMax(2, MotorType.kBrushless);
     leftFront = new CANSparkMax(3, MotorType.kBrushless);
     leftBack = new CANSparkMax(4, MotorType.kBrushless);
 
     rightBack.follow(rightFront);
     leftBack.follow(leftFront);
 
-    // rightFront.setInverted(true);
+    rightFront.setSmartCurrentLimit(50);
+    rightBack.setSmartCurrentLimit(50);
+    leftFront.setSmartCurrentLimit(50);
+    leftBack.setSmartCurrentLimit(50);
+
+    rightFront.setClosedLoopRampRate(.1);
+    rightBack.setClosedLoopRampRate(.1);
+    leftFront.setClosedLoopRampRate(.1);
+    leftBack.setClosedLoopRampRate(.1);
+
+    //rightFront.setInverted(true);
     // leftFront.setInverted(true);
 
-    diffDrive = new DifferentialDrive(leftFront, rightFront);
-    diffDrive.setSafetyEnabled(false);
+    pidgey = new PigeonIMU(5);
 
     driveController = new Joystick(0);
 
@@ -92,12 +106,20 @@ public class Robot extends TimedRobot {
     leftEncoder = leftFront.getEncoder();
     rightEncoder = rightFront.getEncoder();
 
+    leftEncoder.setPosition(0.0);
+    rightEncoder.setPosition(0.0);
+
+    diffDrive = new DifferentialDrive(leftFront, rightFront);
+    diffDrive.setSafetyEnabled(false);
+
+    pidgey.configFactoryDefault();
+
     // PID coefficients
-    kP = 0.5;  //5e-5; 
-    kI = 0.5;        //1e-6;
+    kP = 0.000065;    //0.001;      //0.5;  //5e-5; 
+    kI = 0.000000001;   //0.5;  //1e-6;
     kD = 0; 
     kIz = 0; 
-    kFF = 0; 
+    kFF = 0.00017; // ff for velocity
     kMaxOutput = 1; 
     kMinOutput = -1;
     maxRPM = 5700;
@@ -124,8 +146,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("D Gain", kD);
     SmartDashboard.putNumber("I Zone", kIz);
     SmartDashboard.putNumber("Feed Forward", kFF);
-    SmartDashboard.putNumber("Max Output", kMaxOutput);
-    SmartDashboard.putNumber("Min Output", kMinOutput);
+    // SmartDashboard.putNumber("Max Output", kMaxOutput);
+    // SmartDashboard.putNumber("Min Output", kMinOutput);
 
     chooser.setDefaultOption("Default Auto", kDefaultAuto);
     chooser.addOption("My Auto", kCustomAuto);
@@ -145,7 +167,10 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("Left Encoder Velocity", leftEncoder.getVelocity());
     SmartDashboard.putNumber("Right Encoder Velocity", rightEncoder.getVelocity());
-    
+ 
+    // SmartDashboard.putNumber("left position", leftEncoder.getPosition());
+    // SmartDashboard.putNumber("right Position", rightEncoder.getPosition());
+
   }
 
   /**
@@ -169,31 +194,52 @@ public class Robot extends TimedRobot {
 
     counter = 0;
 
-    double[][] waypoints = new double[][] {
-        {0,0},
-        {-2,2},
-        {0,4},
-        {2,2},
-        {0,0}
-    };
-
-    double[][] pathPoints = new double[][] {
-        {-4.5,2.5},
-        {-6,6},
-        {-4.5,9.5},
-        {0,12},
-        {4.5,9.5},
-        {6,6},
-        {4.5,2.5},
-        {0,0}
-    };
-
     double[][] straightLine = new double[][] {
         {0,0},
-        {0,2},
-        {0,4},
+        {0,3},
         {0,6}
     };
+
+    // tester arrays
+    // double[][] rightTurn = new double[][] {
+    //     {0,0},
+    //     {0,1},
+    //     {0,2},
+    //     {1,2},
+    //     {2,2}
+    // };
+
+    // double[][] leftTurnNeg = new double[][] {
+    //   {0,0},
+    //   {-1,1}, 
+    //   {-2,2}
+    // };
+
+    // double[][] leftTurnPos = new double[][] {
+    //   {1,1},
+    //   {3,1},
+    //   {3,3}
+    // };
+
+    // double[][] smallCircle = new double[][] {
+    //     {0,0.1},
+    //     {-2,2},
+    //     {0,4},
+    //     {2,2},
+    //     {0,0}
+    // };
+
+    // double[][] bigCircle = new double[][] {
+    //     {0,0},
+    //     {-4.5,2.5},
+    //     {-6,6},
+    //     {-4.5,9.5},
+    //     {0,12},
+    //     {4.5,9.5},
+    //     {6,6},
+    //     {4.5,2.5},
+    //     {0,0}
+    // };
     
     final PathPlanner path = new PathPlanner(straightLine);
     path.calculate(totalTime, timeStep, robotTrackWidth);
@@ -209,16 +255,20 @@ public class Robot extends TimedRobot {
     Robot.accumulator += timer.getDT();
     // System.out.println(timer.getDT());
     
+    SmartDashboard.putNumber("left position", leftEncoder.getPosition());
+    SmartDashboard.putNumber("right Position", -rightEncoder.getPosition());
+
     if (!isAutoFinished && (accumulator >= timeStep)) {
-      // System.out.printf("\n--------------------\nCounter: %d \nLeft Velocity: %f \nRight Velocity: %f", 
-      //   counter, PathPlanner.smoothLeftVelocity[counter][1], PathPlanner.smoothRightVelocity[counter][1]);
+
+      System.out.printf("\n--------------------\nCounter: %d \nLeft Velocity: %f \nRight Velocity: %f", 
+        counter, PathPlanner.smoothLeftVelocity[counter][1], PathPlanner.smoothRightVelocity[counter][1]);
     
-      // leftPidController.setReference(PathPlanner.smoothLeftVelocity[counter][1], ControlType.kVelocity);
-      // rightPidController.setReference(PathPlanner.smoothRightVelocity[counter][1], ControlType.kVelocity);
+      leftPidController.setReference(PathPlanner.smoothLeftVelocity[counter][1], ControlType.kVelocity);
+      rightPidController.setReference(-PathPlanner.smoothRightVelocity[counter][1], ControlType.kVelocity);
 
-      leftPidController.setReference(0.2, ControlType.kVelocity);
-      rightPidController.setReference(0.2, ControlType.kVelocity);
-
+      // test code for pid controllers
+      // leftPidController.setReference(720, ControlType.kVelocity);
+      // rightPidController.setReference(-720, ControlType.kVelocity); // find way to invert right side to drive forward
 
       Robot.counter++;
       accumulator = 0.0;
@@ -226,7 +276,7 @@ public class Robot extends TimedRobot {
       if (counter == PathPlanner.smoothLeftVelocity.length) {
         isAutoFinished = true;
 
-        leftPidController.setReference(0, ControlType.kVelocity);
+        leftPidController.setReference(0, ControlType.kVelocity); // set control type to voltage for a harder stop
         rightPidController.setReference(0, ControlType.kVelocity);
 
       }
@@ -242,8 +292,13 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
+    SmartDashboard.putNumber("left position", leftEncoder.getPosition());
+    SmartDashboard.putNumber("right Position", rightEncoder.getPosition());
+
     diffDrive.arcadeDrive(-driveController.getRawAxis(1), driveController.getRawAxis(4));
 
+    // SmartDashboard.putNumber("Left Enc Position", leftEncoder.getPosition());
+    // SmartDashboard.putNumber("Right Enc Position", rightEncoder.getPosition());
   
   }
 
