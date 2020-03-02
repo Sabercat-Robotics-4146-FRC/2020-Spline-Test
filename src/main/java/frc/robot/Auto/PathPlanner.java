@@ -37,7 +37,9 @@ public class PathPlanner {
 
 	double velocityAlpha;
 	double velocityBeta;
-    double velocityTolerance;
+	double velocityTolerance;
+	
+	double ticksPerFoot = 15049;
     
     
     public PathPlanner(double[][] path) {
@@ -91,7 +93,7 @@ public class PathPlanner {
 
 		for (int i = 0; i < array.length; i++) {
 			temp[i][0] = array[i][0];
-			temp[i][1] = ((array[i][1]) * 7 * 60); // 7=number of rotations/1 foot, 60 = seconds to minutes
+			temp[i][1] = ((array[i][1]) * ticksPerFoot * 0.1); // .1 = sec to ms 
 		}
 
 		return temp;
