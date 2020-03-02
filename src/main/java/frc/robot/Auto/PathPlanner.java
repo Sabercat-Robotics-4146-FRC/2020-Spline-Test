@@ -21,8 +21,8 @@ public class PathPlanner {
 
 	//smooth velocity
 	public double[][] smoothCenterVelocity;
-	public static double[][] smoothRightVelocity;
-	public static double[][] smoothLeftVelocity;
+	public double[][] smoothRightVelocity;
+	public double[][] smoothLeftVelocity;
 
 	//accumulated heading
 	public double[][] heading;
@@ -98,20 +98,6 @@ public class PathPlanner {
 
 		return temp;
 	}
-
-	// not needed?
-	public double[][] translateArray(double[][] array) {
-		double [][] temporary = new double[array.length][array[1].length];
-
-		for (int i = 0; i < array.length - 1; i++) {
-			for (int j = 0; j < array[1].length - 1; j++) {
-				temporary[i][j] = array[i][j];
-			}
-			temporary[i][0] = -array[i][0];
-		}
-
-		return temporary;
-	}
     
     public double[][] inject(double[][] orig, int numToInject) {
 		double morePoints[][];
@@ -182,11 +168,10 @@ public class PathPlanner {
 		li.add(path[0]);
 
 		//find intermediate nodes
-		for(int i=1; i<path.length-1; i++)
-		{
+		for(int i=1; i<path.length-1; i++) {
 			//calculate direction
-			double vector1 = Math.atan2((path[i][1]-path[i-1][1]),path[i][0]-path[i-1][0]);
-			double vector2 = Math.atan2((path[i+1][1]-path[i][1]),path[i+1][0]-path[i][0]);
+			double vector1 = Math.atan2(path[i][1]-path[i-1][1],path[i][0]-path[i-1][0]);
+			double vector2 = Math.atan2(path[i+1][1]-path[i][1],path[i+1][0]-path[i][0]);
        
 			//determine if both vectors have a change in direction
 			if(Math.abs(vector2-vector1)>=0.01) {
@@ -401,7 +386,7 @@ public class PathPlanner {
 				}
 			}
 
-
+			// gradient[i][1] = ((2048/90) * gradient[i][1]); 
 
 		}
 
@@ -468,8 +453,6 @@ public class PathPlanner {
 	//  all you need to call is .smoothVelocity[0] and .smoothVelocity[1] to the left and
 	//  right motor controllers
 	public void calculate(double totalTime, double timeStep, double robotTrackWidth) {
-		// translates original path over y-axis
-		//double[][] transPath = translateArray(origPath);
 
 		//first find only direction changing nodes
 		nodeOnlyPath = nodeOnlyWayPoints(origPath);
@@ -522,61 +505,5 @@ public class PathPlanner {
 		smoothRightVelocity = convertArray(smoothRightVelocity);
 
 	}
-
-	// main program
-	public static void main(String[] args) {
-
-		long start = System.currentTimeMillis();
-		//System.setProperty("java.awt.headless", "true"); //enable this to true to emulate roboRio environment
-
-
-		//create waypoint path
-		double[][] waypoints = new double[][] {
-				{1, 1},
-				{5, 1},
-				{9, 12},
-				{12, 9},
-				{15, 6},
-				{19, 12}
-		}; 
-
-		double totalTime = 8; //seconds
-		double timeStep = 0.1; //period of control loop on Rio, seconds
-		double robotTrackWidth = 2; //distance between left and right wheels, feet
-
-		final PathPlanner path = new PathPlanner(waypoints);
-		path.calculate(totalTime, timeStep, robotTrackWidth);
-
-		System.out.println("Time in ms: " + (System.currentTimeMillis()-start));
-
-		// if(!GraphicsEnvironment.isHeadless())					Not sure this piece of code is necessary
-		// {
-
-		// 	FalconLinePlot fig2 = new FalconLinePlot(path.smoothCenterVelocity,null,Color.blue);
-		// 	fig2.yGridOn();
-		// 	fig2.xGridOn();
-		// 	fig2.setYLabel("Velocity (ft/sec)");
-		// 	fig2.setXLabel("time (seconds)");
-		// 	fig2.setTitle("Velocity Profile for Left and Right Wheels \n Left = Cyan, Right = Magenta");
-		// 	fig2.addData(path.smoothRightVelocity, Color.magenta);
-		// 	fig2.addData(path.smoothLeftVelocity, Color.cyan);
-
-		// 	FalconLinePlot fig1 = new FalconLinePlot(path.nodeOnlyPath,Color.blue,Color.green);
-		// 	fig1.yGridOn();
-		// 	fig1.xGridOn();
-		// 	fig1.setYLabel("Y (feet)");
-		// 	fig1.setXLabel("X (feet)");
-		// 	fig1.setTitle("Top Down View of FRC Field (24ft x 27ft) \n shows global position of robot path, along with left and right wheel trajectories");
-
-		// 	//force graph to show 1/2 field dimensions of 24ft x 27 feet
-		// 	fig1.setXTic(0, 27, 1);
-		// 	fig1.setYTic(0, 24, 1);
-		// 	fig1.addData(path.smoothPath, Color.red, Color.blue);
-
-
-		// 	fig1.addData(path.leftPath, Color.magenta);
-		// 	fig1.addData(path.rightPath, Color.magenta);
-
-		}
 	
 }
