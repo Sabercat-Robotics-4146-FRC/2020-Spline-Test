@@ -53,6 +53,7 @@ public class Robot extends TimedRobot {
 
   private double targetAngle;
   private double currentYawPos;
+  // private double firstYaw;
 
   private Timer timer = new Timer();
 
@@ -85,27 +86,25 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
 
-    // motor init
     rightFront = new TalonFX(1);
     rightBack = new TalonFX(2);
     leftFront = new TalonFX(3);
     leftBack = new TalonFX(4);
 
-    // setting followers and leaders
     rightBack.set(ControlMode.Follower, rightFront.getDeviceID());
     leftBack.set(ControlMode.Follower, leftFront.getDeviceID());
+    // rightBack.follow(rightFront);
+    // leftBack.follow(leftFront);
 
-    // to right the right side
-    rightFront.setInverted(true);
-    rightBack.setInverted(true);
-
-    // ramps to full speed (sec)
     rightFront.configClosedloopRamp(0.5);
     rightBack.configClosedloopRamp(0.5);
     leftFront.configClosedloopRamp(0.5);
     leftBack.configClosedloopRamp(0.5);
 
-    // to stop slippage
+    rightFront.setInverted(true);
+    rightBack.setInverted(true);
+    // leftFront.setInverted(true);
+
     leftFront.setNeutralMode(NeutralMode.Brake);
     leftBack.setNeutralMode(NeutralMode.Brake);
     rightFront.setNeutralMode(NeutralMode.Brake);
@@ -117,52 +116,35 @@ public class Robot extends TimedRobot {
     leftFront.configStatorCurrentLimit(new StatorCurrentLimitConfiguration(true, 30, 30, 0.1));
     leftBack.configStatorCurrentLimit(new StatorCurrentLimitConfiguration(true, 30, 30, 0.1));
 
-    // pidgeon IMU init
     pidgey = new PigeonIMU(17);
     yprArr = new double[3];
-    pidgey.configFactoryDefault();
 
-    // configs pidgey yaw to remote 1 slot
-    rightFront.configRemoteFeedbackFilter(pidgey.getDeviceID(), RemoteSensorSource.Pigeon_Yaw, PIDController.REMOTE_1,
-        30);
+    driveController = new Joystick(0);
 
-    // configs remote sensor to first PID on right front talon
-    rightFront.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor1, PIDController.PIDTurn, 30);
-
-    // configs remote 1 to pid slot 1 on right front talon
-    rightFront.selectProfileSlot(PIDController.REMOTE_1, PIDController.PIDTurn);
-    leftFront.selectProfileSlot(PIDController.REMOTE_1, PIDController.PIDTurn);
-
-    // config pid values for pigeon
-    rightFront.config_kP(1, PIDController.turning.kP);
-    rightFront.config_kI(1, PIDController.turning.kI);
-    rightFront.config_kD(1, PIDController.turning.kD);
-    rightFront.config_kF(1, PIDController.turning.kF);
-    rightFront.config_IntegralZone(1, PIDController.turning.kIzone);
-
-    // zero pidgey
-    pidgey.setYaw(0, 30);
-    pidgey.setAccumZAngle(0, 30);
-
-    // integrated encoder values
+    // encoder values
     configs = new TalonFXConfiguration();
     configs.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
     leftFront.configAllSettings(configs);
     rightFront.configAllSettings(configs);
 
-    // encoder values to pid 0 values
+    pidgey.configFactoryDefault();
+
+    rightFront.configRemoteFeedbackFilter(pidgey.getDeviceID(), RemoteSensorSource.Pigeon_Yaw, PIDController.REMOTE_1,
+        30);
+
+    rightFront.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor1, PIDController.PIDTurn, 30);
     rightFront.configSelectedFeedbackSensor(FeedbackDevice.IntegratedSensor, PIDController.PIDPrimary, 30);
     leftFront.configSelectedFeedbackSensor(FeedbackDevice.IntegratedSensor, PIDController.PIDPrimary, 30);
 
-    // sets allowable error for pid 0
     rightFront.configAllowableClosedloopError(PIDController.PIDPrimary, 0, 30);
     leftFront.configAllowableClosedloopError(PIDController.PIDPrimary, 0, 30);
 
-    // configs pid 0 slot to pid 0 on talons
     rightFront.selectProfileSlot(PIDController.REMOTE_0, PIDController.PIDPrimary);
     leftFront.selectProfileSlot(PIDController.REMOTE_0, PIDController.PIDPrimary);
 
-    // configs pid values for straight shot
+    rightFront.selectProfileSlot(PIDController.REMOTE_1, PIDController.PIDTurn);
+    leftFront.selectProfileSlot(PIDController.REMOTE_1, PIDController.PIDTurn);
+
     rightFront.config_kP(0, PIDController.velocity.kP);
     rightFront.config_kI(0, PIDController.velocity.kI);
     rightFront.config_kD(0, PIDController.velocity.kD);
@@ -175,15 +157,21 @@ public class Robot extends TimedRobot {
     leftFront.config_kF(0, PIDController.velocity.kF);
     leftFront.config_IntegralZone(0, PIDController.velocity.kIzone);
 
-    // sets encoder values to 0
+    rightFront.config_kP(1, PIDController.turning.kP);
+    rightFront.config_kI(1, PIDController.turning.kI);
+    rightFront.config_kD(1, PIDController.turning.kD);
+    rightFront.config_kF(1, PIDController.turning.kF);
+    rightFront.config_IntegralZone(1, PIDController.turning.kIzone);
+
+    // zero pidgey
+    pidgey.setYaw(0, 30);
+    pidgey.setAccumZAngle(0, 30);
+
     rightFront.setSelectedSensorPosition(0, PIDController.PIDPrimary, 30);
     leftFront.setSelectedSensorPosition(0, PIDController.PIDPrimary, 30);
 
-    // rightFront.configAuxPIDPolarity(false, 30);
-
-    // initializes drivecontroller
-    driveController = new Joystick(0);
-
+    chooser.setDefaultOption("Default Auto", kDefaultAuto);
+    chooser.addOption("My Auto", kCustomAuto);
   }
 
   /**
@@ -247,6 +235,21 @@ public class Robot extends TimedRobot {
     pidgey.setYaw(0, 30);
     pidgey.setAccumZAngle(0, 30);
 
+    // tester arrays
+    // double[][] rightTurn = new double[][] {
+    // {0,0},
+    // {0,1},
+    // {0,2},
+    // {1,2},
+    // {2,2}
+    // };
+
+    // double[][] leftTurnPos = new double[][] {
+    // {1,1},
+    // {3,1},
+    // {3,3}
+    // };
+
   }
 
   /**
@@ -255,9 +258,13 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
 
+    // pidgey.getYawPitchRoll(yprArr);
+    // System.out.print("yaw: " + yprArr[0] + " ");
+    // System.out.println("pos: " + targetAngle);
+
     accumulator += timer.getDT();
-    // SmartDashboard.putNumber("acum", accumulator);
-    // tester
+    SmartDashboard.putNumber("acum", accumulator);
+    // System.out.println(accumulator);
 
     SmartDashboard.putNumber("error", rightFront.getClosedLoopError(1));
 
@@ -300,6 +307,10 @@ public class Robot extends TimedRobot {
     forward = Deadband(forward);
     turn = Deadband(turn);
 
+    // leftFront.set(ControlMode.Velocity, forward, DemandType.ArbitraryFeedForward,
+    // turn);
+    // rightFront.set(ControlMode.Velocity, forward,
+    // DemandType.ArbitraryFeedForward, -turn);
     leftFront.set(ControlMode.PercentOutput, forward, DemandType.ArbitraryFeedForward, turn);
     rightFront.set(ControlMode.PercentOutput, forward, DemandType.ArbitraryFeedForward, -turn);
 
